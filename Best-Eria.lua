@@ -1,5 +1,4 @@
 local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- 📌 Configuración para modificar `entityManifestCollection`
 local folder = workspace.placeFolders.entityManifestCollection
@@ -59,30 +58,6 @@ folder.DescendantAdded:Connect(function(descendant)
     end
 end)
 
--- 📌 Configuración para recoger ítems automáticamente
-local PickUpItemRequest = ReplicatedStorage:WaitForChild("network"):WaitForChild("RemoteFunction"):WaitForChild("pickUpItemRequest")
-local ItemsFolder = workspace:WaitForChild("placeFolders"):WaitForChild("items")
-local UserId = "7037073399"
-local autoPickupEnabled = false -- Estado inicial desactivado
-
-local function pickUpOwnedItems()
-    for _, item in ipairs(ItemsFolder:GetChildren()) do
-        local ownersFolder = item:FindFirstChild("owners")
-        if ownersFolder and ownersFolder:FindFirstChild(UserId) then
-            PickUpItemRequest:InvokeServer(item)
-        end
-    end
-end
-
-ItemsFolder.ChildAdded:Connect(function(item)
-    if autoPickupEnabled then
-        local ownersFolder = item:FindFirstChild("owners")
-        if ownersFolder and ownersFolder:FindFirstChild(UserId) then
-            PickUpItemRequest:InvokeServer(item)
-        end
-    end
-end)
-
 -- 📌 Detección de teclas para activar/desactivar los scripts
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -97,11 +72,5 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             processParts(originalSize)
             print("❌ Cambio de tamaño DESACTIVADO (Volviendo a 3,3,3)")
         end
-    end
-
-    -- 🔹 Alternar auto-pickup con "Z"
-    if input.KeyCode == Enum.KeyCode.Z then
-        autoPickupEnabled = not autoPickupEnabled
-        print(autoPickupEnabled and "✅ Auto Pickup ACTIVADO" or "❌ Auto Pickup DESACTIVADO")
     end
 end)
