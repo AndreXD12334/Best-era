@@ -88,7 +88,7 @@ local abilityData = {
 }
 --// LISTA DE MOBS
 local listaDeMobs = {
-    "Dragon Monk"
+    "Eldering Shroom", "Dummy", "Chicken", "Crabby", "Elder Shroom", "Ent Sapling", "Goblin", "Guardian", "Rubee", "Scarecrow", "Shroom", "Spider", "Spider Queen", "Spiderling", "Moglo", "Ratty", "Batty", "Trickster Spirit", "Baby Yeti", "Undead", "The Yeti", "Hog", "Redwood Bandit", "Mo Ko Tu Aa", "Treemuk", "Terror of the Deep", "Bandit Skirmisher", "Bandit", "Shaman", "Chad", "Guardian Dummy", "Horseshoe Crab", "Mogloko", "Stingtail", "Scarab", "Dustwurm", "Gauntlet Gate", "Deathsting", "Possum the Devourer", "Slime", "Baby Slime", "Big Slime", "Baby Yeti Tribute", "Pit Ratty", "Reanimated Slime", "Gorgog Guardian", "Aevrul", "Pirate", "Rootbeard", "Tortoise", "Bamboo Mage", "Humanoid", "Shade", "Skull Boss", "Parasite Host", "Frightcrow", "Enchanted Slime", "Rock Slime", "Reaper", "Tumbleweed", "Monster", "Battering Shroom", "Ethera", "Pirate Captain", "Miner Prisoner", "First Mate", "Birthday Mage", "Fish", "Pirate Summon", "Parasite", "Orc", "Hermit Crabby", "Sunken Savage", "Cultist", "Wisp", "Runic Titan", "Tribute Gate", "Mosquito Parasite", "Gecko", "Prisoner", "Skeleton", "Mama Hermit Crabby", "Boar", "Book", "Crow", "Fly Trap", "Lost Spirit", "Enchiridion", "Jellyfish", "Mimic Jester", "Snel", "Ram", "Bear", "Redwood Bandit Leader", "Baby Scarab", "Bushi", "Ronin", "Samurai", "Sensei", "Shinobi", "Dark Cleric", "Master Miyamoto", "Dragon Boss", "Mummy", "Cow", "Dragon Monk", "Kobra", "Hag", "Ethereal Monarch", "Ghostflame Wisp", "Soulcage", "Baby Shroom", "Bull", "Mimic", "Toni", "Tal Rey", "Scorpentar", "Tombwurm""
 }
 
 --// FUNCIONES DE UTILIDAD
