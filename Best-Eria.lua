@@ -90,7 +90,7 @@ local abilityData = {
 --// LISTA DE MOBS (CONVERTIDA A SET PARA BÚSQUEDA O(1))
 local mobSet = {}
 local listaDeMobs = {
-"Tortoise", "Dragon Monk"
+    "Eldering Shroom", "Dummy", "Chicken", "Crabby", "Elder Shroom", "Ent Sapling", "Goblin", "Guardian", "Rubee", "Scarecrow", "Shroom", "Spider", "Spider Queen", "Spiderling", "Moglo", "Ratty", "Batty", "Trickster Spirit", "Baby Yeti", "Undead", "The Yeti", "Hog", "Redwood Bandit", "Mo Ko Tu Aa", "Treemuk", "Terror of the Deep", "Bandit Skirmisher", "Bandit", "Shaman", "Chad", "Guardian Dummy", "Horseshoe Crab", "Mogloko", "Stingtail", "Scarab", "Dustwurm", "Gauntlet Gate", "Deathsting", "Possum the Devourer", "Slime", "Baby Slime", "Big Slime", "Baby Yeti Tribute", "Pit Ratty", "Reanimated Slime", "Gorgog Guardian", "Aevrul", "Pirate", "Rootbeard", "Tortoise", "Bamboo Mage", "Humanoid", "Shade", "Skull Boss", "Parasite Host", "Frightcrow", "Enchanted Slime", "Rock Slime", "Reaper", "Tumbleweed", "Monster", "Battering Shroom", "Ethera", "Pirate Captain", "Miner Prisoner", "First Mate", "Birthday Mage", "Fish", "Pirate Summon", "Parasite", "Orc", "Hermit Crabby", "Sunken Savage", "Cultist", "Wisp", "Runic Titan", "Tribute Gate", "Mosquito Parasite", "Gecko", "Prisoner", "Skeleton", "Mama Hermit Crabby", "Boar", "Book", "Crow", "Fly Trap", "Lost Spirit", "Enchiridion", "Jellyfish", "Mimic Jester", "Snel", "Ram", "Bear", "Redwood Bandit Leader", "Baby Scarab", "Bushi", "Ronin", "Samurai", "Sensei", "Shinobi", "Dark Cleric", "Master Miyamoto", "Dragon Boss", "Mummy", "Cow", "Dragon Monk", "Kobra", "Hag", "Ethereal Monarch", "Ghostflame Wisp", "Soulcage", "Baby Shroom", "Bull", "Mimic", "Toni", "Tal Rey", "Scorpentar", "Tombwurm"
 }
 
 -- Crear set para búsqueda rápida
@@ -105,7 +105,13 @@ local lastMobUpdate = 0
 local lastAbilityUpdate = 0
 local MOB_CACHE_INTERVAL = 0.5 -- Actualizar mobs cada 0.5 segundos
 local ABILITY_CHECK_INTERVAL = 0.2 -- Verificar habilidad cada 0.2 segundos
-local ATTACK_INTERVAL = 0.15 -- Atacar cada 0.15 segundos
+local ATTACK_INTERVAL = 0.1 -- Atacar cada 0.15 segundos
+local MOBS_PER_BATCH = 5 -- Cantidad de mobs por grupo de ataque
+local REPETICIONES_POR_MOB = 5 -- Cantidad de veces que se repite cada ataque por mob
+
+-- Variables para el sistema de grupos rotativos
+local currentMobIndex = 1
+local allMobsList = {}
 
 -- Cache de RemoteNames para evitar búsquedas repetitivas
 local remoteNamesCache = {}
@@ -159,6 +165,7 @@ end
 --// FUNCIÓN OPTIMIZADA PARA OBTENER MOBS (CON CACHE)
 local function actualizarCacheMobs()
     local nuevoCache = {}
+    local nuevaListaTotal = {}
     local entityCollection = workspace.placeFolders.entityManifestCollection:GetChildren()
     
     for i = 1, #entityCollection do
@@ -168,45 +175,82 @@ local function actualizarCacheMobs()
                 nuevoCache[instancia.Name] = {}
             end
             table.insert(nuevoCache[instancia.Name], instancia)
+            table.insert(nuevaListaTotal, instancia)
         end
     end
     
     cachedMobs = nuevoCache
+    allMobsList = nuevaListaTotal
+    
+    -- Resetear índice si es necesario
+    if currentMobIndex > #allMobsList then
+        currentMobIndex = 1
+    end
 end
 
---// FUNCIÓN OPTIMIZADA DE ATAQUE (UNA SOLA LLAMADA AL REMOTE)
+--// FUNCIÓN OPTIMIZADA DE ATAQUE (GRUPOS DE 5 MOBS x 5 REPETICIONES)
 local function ejecutarAtaqueOptimizado()
-    if not cachedGUID or not cachedID then return end
+    if not cachedGUID or not cachedID or #allMobsList == 0 then return end
     
     local remoteNames = remoteNamesCache[cachedID]
     if not remoteNames then return end
     
     local remoteEvent = ReplicatedStorage:WaitForChild("network"):WaitForChild("RemoteEvent"):WaitForChild("playerRequest_damageEntity_batch")
     
-    -- Crear un solo batch con todos los ataques
-    local todosLosAtaques = {}
+    -- Crear grupo actual de mobs para atacar
+    local grupoActual = {}
+    local mobsProcessados = 0
     
-    for mobName, grupo in pairs(cachedMobs) do
-        for j = 1, #grupo do
-            local mob = grupo[j]
-            if mob and mob.Parent then -- Verificar que el mob aún existe
-                for k = 1, #remoteNames do
-                    table.insert(todosLosAtaques, {
+    -- Obtener hasta MOBS_PER_BATCH mobs comenzando desde currentMobIndex
+    while mobsProcessados < MOBS_PER_BATCH and #allMobsList > 0 do
+        if currentMobIndex > #allMobsList then
+            currentMobIndex = 1 -- Reiniciar el ciclo
+        end
+        
+        local mob = allMobsList[currentMobIndex]
+        
+        -- Verificar que el mob aún existe
+        if mob and mob.Parent then
+            table.insert(grupoActual, mob)
+            mobsProcessados = mobsProcessados + 1
+        else
+            -- Si el mob no existe, lo removemos de la lista
+            table.remove(allMobsList, currentMobIndex)
+            currentMobIndex = currentMobIndex - 1 -- Ajustar índice
+        end
+        
+        currentMobIndex = currentMobIndex + 1
+        
+        -- Evitar loop infinito si no hay mobs válidos
+        if #allMobsList == 0 then
+            break
+        end
+    end
+    
+    -- Crear ataques para el grupo actual con repeticiones
+    if #grupoActual > 0 then
+        local ataquesGrupo = {}
+        
+        for i = 1, #grupoActual do
+            local mob = grupoActual[i]
+            for j = 1, #remoteNames do
+                local remoteName = remoteNames[j]
+                -- Repetir cada ataque REPETICIONES_POR_MOB veces
+                for rep = 1, REPETICIONES_POR_MOB do
+                    table.insert(ataquesGrupo, {
                         mob,
                         mob.Position,
                         "ability",
                         cachedID,
-                        remoteNames[k],
+                        remoteName,
                         cachedGUID
                     })
                 end
             end
         end
-    end
-    
-    -- Enviar todos los ataques en una sola llamada
-    if #todosLosAtaques > 0 then
-        remoteEvent:FireServer(todosLosAtaques)
+        
+        -- Enviar ataques del grupo actual (ahora con repeticiones)
+        remoteEvent:FireServer(ataquesGrupo)
     end
 end
 
