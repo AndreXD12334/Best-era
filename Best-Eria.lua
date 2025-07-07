@@ -90,7 +90,7 @@ local abilityData = {
 --// LISTA DE MOBS (CONVERTIDA A SET PARA BÚSQUEDA O(1))
 local mobSet = {}
 local listaDeMobs = {
-"Pit Ratty"
+    "Eldering Shroom", "Dummy", "Chicken", "Crabby", "Elder Shroom", "Ent Sapling", "Goblin", "Guardian", "Rubee", "Scarecrow", "Shroom", "Spider", "Spider Queen", "Spiderling", "Moglo", "Ratty", "Batty", "Trickster Spirit", "Baby Yeti", "Undead", "The Yeti", "Hog", "Redwood Bandit", "Mo Ko Tu Aa", "Treemuk", "Terror of the Deep", "Bandit Skirmisher", "Bandit", "Shaman", "Chad", "Guardian Dummy", "Horseshoe Crab", "Mogloko", "Stingtail", "Scarab", "Dustwurm", "Gauntlet Gate", "Deathsting", "Possum the Devourer", "Slime", "Baby Slime", "Big Slime", "Baby Yeti Tribute", "Pit Ratty", "Reanimated Slime", "Gorgog Guardian", "Aevrul", "Pirate", "Rootbeard", "Tortoise", "Bamboo Mage", "Humanoid", "Shade", "Skull Boss", "Parasite Host", "Frightcrow", "Enchanted Slime", "Rock Slime", "Reaper", "Tumbleweed", "Monster", "Battering Shroom", "Ethera", "Pirate Captain", "Miner Prisoner", "First Mate", "Birthday Mage", "Fish", "Pirate Summon", "Parasite", "Orc", "Hermit Crabby", "Sunken Savage", "Cultist", "Wisp", "Runic Titan", "Tribute Gate", "Mosquito Parasite", "Gecko", "Prisoner", "Skeleton", "Mama Hermit Crabby", "Boar", "Book", "Crow", "Fly Trap", "Lost Spirit", "Enchiridion", "Jellyfish", "Mimic Jester", "Snel", "Ram", "Bear", "Redwood Bandit Leader", "Baby Scarab", "Bushi", "Ronin", "Samurai", "Sensei", "Shinobi", "Dark Cleric", "Master Miyamoto", "Dragon Boss", "Mummy", "Cow", "Dragon Monk", "Kobra", "Hag", "Ethereal Monarch", "Ghostflame Wisp", "Soulcage", "Baby Shroom", "Bull", "Mimic", "Toni", "Tal Rey", "Scorpentar", "Tombwurm"
 }
 
 -- Crear set para búsqueda rápida
@@ -105,7 +105,7 @@ local lastMobUpdate = 0
 local lastAbilityUpdate = 0
 local MOB_CACHE_INTERVAL = 0.5 -- Actualizar mobs cada 0.5 segundos
 local ABILITY_CHECK_INTERVAL = 0.2 -- Verificar habilidad cada 0.2 segundos
-local ATTACK_INTERVAL = 0.1 -- Atacar cada 0.15 segundos
+local ATTACK_INTERVAL = 0.15 -- Atacar cada 0.15 segundos
 local MOBS_PER_BATCH = 5 -- Cantidad de mobs por grupo de ataque
 local REPETICIONES_POR_MOB = 5 -- Cantidad de veces que se repite cada ataque por mob
 
