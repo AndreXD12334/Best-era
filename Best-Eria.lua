@@ -2,6 +2,7 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 --// BASE DE DATOS DE HABILIDADES
 local abilityData = {
@@ -41,10 +42,9 @@ local abilityData = {
     -- Cleric
     ["Spear of Light"] = {ID = 67, RemoteNames = {"spear", "blast"}},
     ["Flare"] = {ID = 50, RemoteNames = {"flare"}},
-	["Judgement"] = {ID = 137, RemoteNames = {"excise", "retribution"}},
-	["Holy Surge"] = {ID = 168, RemoteNames = {"beam-impact"}},
-	["Light Barrage"] = {ID = 167, RemoteNames = {"barrage", "barrage_prime"}},
-	
+    ["Judgement"] = {ID = 137, RemoteNames = {"excise", "retribution"}},
+    ["Holy Surge"] = {ID = 168, RemoteNames = {"beam-impact"}},
+    ["Light Barrage"] = {ID = 167, RemoteNames = {"barrage", "barrage_prime"}},
 
     -- Songweaver
     ["Vibrato"] = {ID = 544, RemoteNames = {"note", "note_encore"}},
@@ -86,11 +86,34 @@ local abilityData = {
     ["Hail of Arrows"] = {ID = 36, RemoteNames = {"quarterSecondDamage"}},
     ["Ricochet"] = {ID = 31, RemoteNames = {"initial", "bounce"}},
 }
---// LISTA DE MOBS
+
+--// LISTA DE MOBS (CONVERTIDA A SET PARA BÚSQUEDA O(1))
+local mobSet = {}
 local listaDeMobs = {
-    "Tortoise"
+"Tortoise"
 }
---// FUNCIONES DE UTILIDAD
+
+-- Crear set para búsqueda rápida
+for _, mobName in ipairs(listaDeMobs) do
+    mobSet[mobName] = true
+end
+
+--// VARIABLES DE OPTIMIZACIÓN
+local cachedGUID, cachedID = nil, nil
+local cachedMobs = {}
+local lastMobUpdate = 0
+local lastAbilityUpdate = 0
+local MOB_CACHE_INTERVAL = 0.5 -- Actualizar mobs cada 0.5 segundos
+local ABILITY_CHECK_INTERVAL = 0.2 -- Verificar habilidad cada 0.2 segundos
+local ATTACK_INTERVAL = 0.15 -- Atacar cada 0.15 segundos
+
+-- Cache de RemoteNames para evitar búsquedas repetitivas
+local remoteNamesCache = {}
+for _, data in pairs(abilityData) do
+    remoteNamesCache[data.ID] = data.RemoteNames
+end
+
+--// FUNCIONES DE UTILIDAD OPTIMIZADAS
 local function isValidGUID(guid)
     return typeof(guid) == "string" and #guid == 36 and string.match(guid, "^%x+%-%x+%-%x+%-%x+%-%x+$") ~= nil
 end
@@ -133,75 +156,90 @@ local function getAbilityGUIDAndID()
     return getAbilityGUIDFromData(parsed)
 end
 
-local function getRemoteNamesFromID(id)
-    for _, data in pairs(abilityData) do
-        if data.ID == id then
-            return data.RemoteNames
+--// FUNCIÓN OPTIMIZADA PARA OBTENER MOBS (CON CACHE)
+local function actualizarCacheMobs()
+    local nuevoCache = {}
+    local entityCollection = workspace.placeFolders.entityManifestCollection:GetChildren()
+    
+    for i = 1, #entityCollection do
+        local instancia = entityCollection[i]
+        if instancia:IsA("BasePart") and mobSet[instancia.Name] then
+            if not nuevoCache[instancia.Name] then
+                nuevoCache[instancia.Name] = {}
+            end
+            table.insert(nuevoCache[instancia.Name], instancia)
         end
     end
+    
+    cachedMobs = nuevoCache
 end
 
---// FUNCION ACTUALIZADA PARA AGRUPAR MOBS POR NOMBRE
-local function obtenerMobsAgrupados()
-    local grupos = {}
-
-    for _, instancia in ipairs(workspace.placeFolders.entityManifestCollection:GetChildren()) do
-        if instancia:IsA("BasePart") and table.find(listaDeMobs, instancia.Name) then
-            grupos[instancia.Name] = grupos[instancia.Name] or {}
-            table.insert(grupos[instancia.Name], instancia)
-        end
-    end
-
-    return grupos
-end
-
---// CACHE
-local cachedGUID, cachedID = nil, nil
-
---// ACTUALIZAR GUID/ID
-task.spawn(function()
-    while true do
-        local nuevoGUID, nuevoID = getAbilityGUIDAndID()
-        if nuevoGUID and nuevoGUID ~= cachedGUID then
-            cachedGUID = nuevoGUID
-            cachedID = nuevoID
-        end
-        task.wait(0.1)
-    end
-end)
-
---// NUEVO CICLO DE ATAQUE AGRUPADO POR MOBS
-task.spawn(function()
-    while true do
-        local success, err = pcall(function()
-            if cachedGUID and cachedID then
-                local gruposDeMobs = obtenerMobsAgrupados()
-                local remoteNames = getRemoteNamesFromID(cachedID)
-                local remoteEvent = ReplicatedStorage:WaitForChild("network"):WaitForChild("RemoteEvent"):WaitForChild("playerRequest_damageEntity_batch")
-
-                for mobName, grupo in pairs(gruposDeMobs) do
-                    for _, remoteName in ipairs(remoteNames) do
-                        local ataques = {}
-
-                        for _, mob in ipairs(grupo) do
-                            table.insert(ataques, {
-                                mob,
-                                mob.Position,
-                                "ability",
-                                cachedID,
-                                remoteName,
-                                cachedGUID
-                            })
-                        end
-
-                        remoteEvent:FireServer(ataques)
-                    end
+--// FUNCIÓN OPTIMIZADA DE ATAQUE (UNA SOLA LLAMADA AL REMOTE)
+local function ejecutarAtaqueOptimizado()
+    if not cachedGUID or not cachedID then return end
+    
+    local remoteNames = remoteNamesCache[cachedID]
+    if not remoteNames then return end
+    
+    local remoteEvent = ReplicatedStorage:WaitForChild("network"):WaitForChild("RemoteEvent"):WaitForChild("playerRequest_damageEntity_batch")
+    
+    -- Crear un solo batch con todos los ataques
+    local todosLosAtaques = {}
+    
+    for mobName, grupo in pairs(cachedMobs) do
+        for j = 1, #grupo do
+            local mob = grupo[j]
+            if mob and mob.Parent then -- Verificar que el mob aún existe
+                for k = 1, #remoteNames do
+                    table.insert(todosLosAtaques, {
+                        mob,
+                        mob.Position,
+                        "ability",
+                        cachedID,
+                        remoteNames[k],
+                        cachedGUID
+                    })
                 end
             end
-        end)
-
-        if not success then
         end
-        task.wait(0.1)
+    end
+    
+    -- Enviar todos los ataques en una sola llamada
+    if #todosLosAtaques > 0 then
+        remoteEvent:FireServer(todosLosAtaques)
+    end
+end
+
+--// SISTEMA PRINCIPAL OPTIMIZADO
+local lastAttackTime = 0
+
+task.spawn(function()
+    while true do
+        local currentTime = tick()
+        
+        -- Actualizar habilidad cada ABILITY_CHECK_INTERVAL
+        if currentTime - lastAbilityUpdate >= ABILITY_CHECK_INTERVAL then
+            local nuevoGUID, nuevoID = getAbilityGUIDAndID()
+            if nuevoGUID and nuevoGUID ~= cachedGUID then
+                cachedGUID = nuevoGUID
+                cachedID = nuevoID
+            end
+            lastAbilityUpdate = currentTime
+        end
+        
+        -- Actualizar cache de mobs cada MOB_CACHE_INTERVAL
+        if currentTime - lastMobUpdate >= MOB_CACHE_INTERVAL then
+            actualizarCacheMobs()
+            lastMobUpdate = currentTime
+        end
+        
+        -- Ejecutar ataque cada ATTACK_INTERVAL
+        if currentTime - lastAttackTime >= ATTACK_INTERVAL then
+            pcall(ejecutarAtaqueOptimizado)
+            lastAttackTime = currentTime
+        end
+        
+        -- Usar Heartbeat para mejor rendimiento
+        RunService.Heartbeat:Wait()
     end
 end)
