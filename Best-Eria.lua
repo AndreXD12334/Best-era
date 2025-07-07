@@ -90,7 +90,7 @@ local abilityData = {
 --// LISTA DE MOBS (CONVERTIDA A SET PARA BÚSQUEDA O(1))
 local mobSet = {}
 local listaDeMobs = {
-"Tortoise"
+"Tortoise", "Dragon Monk"
 }
 
 -- Crear set para búsqueda rápida
